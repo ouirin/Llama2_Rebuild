@@ -1,0 +1,38 @@
+import torch
+from datasets import load_dataset
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+boolq = load_dataset("boolq")
+rte = load_dataset("rte")
+hellaswag = load_dataset("hellaswag")
+winogrande = load_dataset("winogrande")
+arc_easy = load_dataset("arc", "easy")
+arc_challenge = load_dataset("arc", "challenge")
+openbookqa = load_dataset("openbookqa")
+
+model_name = "meta-llama/Llama-2-7b"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+
+model.eval()
+
+predictions = []
+
+for example in dataset["validation"]:
+
+    question = example["question"]
+    passage = example["passage"]
+    inputs = tokenizer(f"Question: {question} Context: {passage}", return_tensors="pt")
+
+    with torch.no_grad():
+    outputs = model.generate(**inputs)
+
+    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    predictions.append(answer)
+
+# 假设有一个正确答案列表
+correct_answers = [example["answer"] for example in dataset["validation"]]
+
+correct_count = sum(p == a for p, a in zip(predictions, correct_answers))
+accuracy = correct_count / len(correct_answers)
+print(f"Accuracy: {accuracy:.2f}")
